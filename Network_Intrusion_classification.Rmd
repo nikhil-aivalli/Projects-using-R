@@ -1,0 +1,321 @@
+---
+title: "Network_Intrusion_classification"
+author: "NIKHIL AIVALLI"
+date: "December 11, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+#Read data
+```{r}
+dataset=read.csv('D:/IMARTICUS/R/Business case_Network intrusion_R/Network_Intrusion_Train_data.csv',na.strings = c(""," ","NA"))
+attach(dataset)
+#View(dataset)
+```
+#EDA
+#EDA:Remove irrelevant variables
+```{r}
+dataset$num_outbound_cmds =NULL
+dataset$is_host_login=NULL
+summary(dataset)
+colSums(is.na(dataset))
+
+dataset$class<- factor(dataset$class)
+
+#Convert nominal variables to numeric codes such as flag, protocol type, service
+levels(dataset$service)<-1:70
+levels(dataset$flag)<-1:11
+levels(dataset$protocol_type)<-1:3
+summary(dataset)
+
+#hist(duration)
+
+normalise <- function(x, na.rm = TRUE) {
+  ranx <- range(x, na.rm = na.rm)
+  (x - ranx[1]) / diff(ranx)
+}
+apply(dataset[,c(1,5,6,10,13,16,17,21,22,30,31)],2,normalise)
+#or
+#scale(dataset[,c(1,5,6,10,13,16,17,21,22,30,31)])
+```
+#Classification using decision tree
+```{r}
+library(rpart)
+modelDT = rpart(formula = class ~ .,data = dataset)
+```
+#classification using Logistic Regression
+```{r}
+modelLR1<-glm(class~.,family = binomial(link = 'logit'),data=dataset)
+summary(modelLR1)
+
+modelLR2<- glm(class~duration+service+flag+src_bytes+dst_bytes+land+hot+
+                 num_failed_logins+logged_in +num_compromised+num_root+
+                 is_guest_login+count+srv_count+serror_rate +srv_serror_rate
+               +rerror_rate+srv_rerror_rate+same_srv_rate+diff_srv_rate                         +srv_diff_host_rate+dst_host_count+dst_host_srv_count
+               +dst_host_same_srv_rate+
+                dst_host_diff_srv_rate +dst_host_same_src_port_rate+
+                 dst_host_srv_diff_host_rate+dst_host_srv_serror_rate+
+                 dst_host_rerror_rate,
+               family = binomial(link = 'logit'),data=dataset)
+               
+            
+summary(modelLR2)
+modelLR3<- glm(class~duration+service+flag+src_bytes+dst_bytes+land+hot+
+                 num_failed_logins+logged_in +num_compromised+num_root+
+                 is_guest_login+count+srv_count+serror_rate +srv_serror_rate
+               +rerror_rate+srv_rerror_rate+same_srv_rate+diff_srv_rate                         +srv_diff_host_rate+dst_host_count+dst_host_srv_count
+               +dst_host_same_srv_rate+
+              dst_host_same_src_port_rate+
+                 dst_host_srv_diff_host_rate+dst_host_srv_serror_rate+
+                 dst_host_rerror_rate,
+               family = binomial(link = 'logit'),data=dataset)
+
+
+summary(modelLR3)
+```
+#classification using SVM
+```{r}
+library(e1071)
+model_svm_L<-svm(formula=class~.,
+                 data=dataset,
+                 type='C-classification',
+                 kernel='linear')
+
+model_svm_R<-svm(formula=class~.,
+                 data=dataset,
+                 type='C-classification',
+                 kernel='radial')
+
+model_svm_S<-svm(formula=class~.,
+                 data=dataset,
+                 type='C-classification',
+                 kernel='sigmoid')
+
+model_svm_P<-svm(formula=class~.,
+                 data=dataset,
+                 type='C-classification',
+                 kernel='polynomial')
+
+
+detach(dataset)
+```
+#calssification using Naive Bayes
+```{r}
+#library(e1071)
+model_NB<-naiveBayes(class~.,data = dataset)
+```
+#CLAssification & validation using KNN
+```{r}
+library(class)
+model_KNN=knn(train = dataset[,-40],
+              test = dataset_V[,-40],
+              cl=dataset[,40],
+              k=200,prob = TRUE)
+model_KNN<-ifelse(model_KNN=="normal",1,0)
+#View(dataset)
+
+CF_KNN<- table(model_KNN,dataset_V$class)
+CF_KNN
+
+acc<-function(cf1){
+  Totp<-cf1[2,1]+cf1[2,2]
+  TP<-cf1[2,2]
+  c<-TP/Totp
+  c
+}
+acc(CF_KNN)
+
+pr_KNN<- prediction(model_KNN,dataset_V$class)
+#length(cr_v$Loan_Status)
+prf_KNN<- performance(pr_KNN,measure = "tpr",x.measure = "fpr")
+plot(prf_KNN)
+
+#obtaining area under ROC curve
+auc_KNN<-performance(pr_KNN,measure = "auc")
+auc_KNN<- auc_KNN@y.values[[1]]
+auc_KNN
+```
+#CLASSIFICATION USING RANDOM FOREST
+```{r}
+model_RF<-model_RF<-randomForest(x=dataset[,-40],
+                      y=dataset[,40],
+                      ntree = 500)
+```
+#VALIDATION DATASET ,reading imputing
+```{r}
+dataset_V=read.csv('D:/IMARTICUS/R/Business case_Network intrusion_R/Network_Intrusion_Validate_data.csv',na.strings = c(""," ","NA"))
+#attach(dataset_V)
+View(dataset_V)
+
+dataset_V$num_outbound_cmds =NULL
+dataset_V$is_host_login=NULL
+summary(dataset_V)
+colSums(is.na(dataset_V))
+
+dataset_V$class<- factor(dataset_V$class)
+
+#Convert nominal variables to numeric codes such as flag, protocol type, service
+levels(dataset_V$service)<-1:70
+levels(dataset_V$flag)<-1:11
+levels(dataset_V$protocol_type)<-1:3
+summary(dataset_V)
+
+apply(dataset_V[,c(1,5,6,10,13,16,17,21,22,30,31)],2,normalise)
+```
+#VALIDATION USING DECISION TREE
+```{r}
+validate_DT <- predict(modelDT,newdata=dataset_V,type='class')
+validate_DT <- ifelse(validate_DT=="normal",1,0)
+
+
+#Confusion matrix
+cf_DT<-table(validate_DT,dataset_V$class)
+cf_DT
+#function for accuracy
+acc<-function(cf1){
+  Totp<-cf1[2,1]+cf1[2,2]
+  TP<-cf1[2,2]
+  c<-TP/Totp
+  c
+}
+acc(cf_DT)
+
+library(ROCR)
+
+pr_DT<- prediction(validate_DT,dataset_V$class)
+#length(cr_v$Loan_Status)
+prf_DT<- performance(pr_DT,measure = "tpr",x.measure = "fpr")
+plot(prf_DT)
+
+#obtaining area under ROC curve
+auc_DT<-performance(pr_DT,measure = "auc")
+auc_DT<- auc_DT@y.values[[1]]
+auc_DT
+
+#prediction for the prediction set
+#plot(modelDT,uniform=TRUE,cex=0.8)
+#text(modelDT, use.n=TRUE, all=TRUE)
+```
+#VALIDATION USING logistic regression
+```{r}
+#validation of our model using validation set
+validate_LR <- predict(modelLR3,newdata=dataset_V,type='response')
+validate_LR <- ifelse(validate_LR >0.5,1,0)
+
+#Confusion matrix
+cf_LR<-table(validate_LR,dataset_V$class)
+cf_LR
+#function for accuracy
+acc<-function(cf1){
+  Totp<-cf1[2,1]+cf1[2,2]
+  TP<-cf1[2,2]
+  c<-TP/Totp
+  c
+}
+acc(cf_LR)
+
+library(ROCR)
+
+pr_LR<- prediction(validate_LR,dataset_V$class)
+#length(cr_v$Loan_Status)
+prf_LR<- performance(pr_LR,measure = "tpr",x.measure = "fpr")
+plot(prf_LR)
+
+#obtaining area under ROC curve
+auc_LR<-performance(pr_LR,measure = "auc")
+auc_LR<- auc_LR@y.values[[1]]
+auc_LR
+#help(ROCR)
+```
+#VALIDATION USING SVM
+```{r}
+validate_SVM_L=predict(model_svm_L,newdata = dataset_V)
+validate_SVM_L=ifelse(validate_SVM_L=="normal",1,0)
+
+validate_SVM_R=predict(model_svm_R,newdata = dataset_V)
+validate_SVM_S=predict(model_svm_S,newdata = dataset_V)
+validate_SVM_P=predict(model_svm_P,newdata = dataset_V)
+
+CF_SVM_L=table(validate_SVM_L,dataset_V$class)
+CF_SVM_R=table(validate_SVM_R,dataset_V$class)
+CF_SVM_S=table(validate_SVM_S,dataset_V$class)
+CF_SVM_P=table(validate_SVM_P,dataset_V$class)
+
+acc<-function(cf1){
+  Totp<-cf1[2,1]+cf1[2,2]
+  TP<-cf1[2,2]
+  c<-TP/Totp
+  c
+}
+acc(CF_SVM_L)
+acc(CF_SVM_R)
+acc(CF_SVM_S)
+acc(CF_SVM_P)
+
+library(ROCR)
+
+pr_SVM_L<- prediction(validate_SVM_L,dataset_V$class)
+#length(cr_v$Loan_Status)
+prf_SVM_L<- performance(pr_SVM_L,measure = "tpr",x.measure = "fpr")
+plot(prf_SVM_L)
+
+#obtaining area under ROC curve
+auc_SVM_L<-performance(pr_SVM_L,measure = "auc")
+auc_SVM_L<- auc_SVM_L@y.values[[1]]
+auc_SVM_L
+```
+#validation using Naive Bayes
+```{r}
+Validate_NB<-predict(model_NB,dataset_V)
+Validate_NB=ifelse(Validate_NB=="normal",1,0)
+CF_NB=table(Validate_NB,dataset_V$class)
+CF_NB
+
+acc<-function(cf1){
+  Totp<-cf1[2,1]+cf1[2,2]
+  TP<-cf1[2,2]
+  c<-TP/Totp
+  c
+}
+acc(CF_NB)
+
+pr_NB<- prediction(Validate_NB,dataset_V$class)
+#length(cr_v$Loan_Status)
+prf_NB<- performance(pr_NB,measure = "tpr",x.measure = "fpr")
+plot(prf_NB)
+
+#obtaining area under ROC curve
+auc_NB<-performance(pr_NB,measure = "auc")
+auc_NB<- auc_NB@y.values[[1]]
+auc_NB
+
+```
+#validation using random forest
+```{r}
+validate_RF<- predict(model_RF,newdata =dataset_V)
+#validate_RF<-as.numeric(validate_RF)
+CF_RF<-table(validate_RF,dataset_V$class)
+CF_RF
+acc<-function(cf1){
+  Totp<-cf1[2,1]+cf1[2,2]
+  TP<-cf1[2,2]
+  c<-TP/Totp
+  c
+}
+acc(CF_RF)
+
+library(ROCR)
+
+pr_RF<- prediction(validate_RF,dataset_V$class)
+#length(cr_v$Loan_Status)
+prf_RF<- performance(pr_RF,measure = "tpr",x.measure = "fpr")
+plot(prf_RF)
+
+#obtaining area under ROC curve
+auc_RF<-performance(pr_RF,measure = "auc")
+auc_RF<- auc_RF@y.values[[1]]
+auc_RF
+
+```

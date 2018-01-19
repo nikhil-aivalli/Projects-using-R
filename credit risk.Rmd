@@ -1,0 +1,355 @@
+---
+title: "CREDIT RISK"
+author: "NIKHIL AIVALLI"
+date: "December 12, 2017"
+output: html_document
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+#Read data
+```{r}
+CR <- read.csv('D:/IMARTICUS/R/dataset/R_Module_Day_7.2_Credit_Risk_Train_data.csv',na.strings = c(""," ","NA"))
+#View(CR)
+attach(CR)
+```
+#EDA
+#EDA:Remove irrelevant variables
+```{r}
+CR$Loan_ID=NULL
+
+#Identify missing values using colSums 
+summary(CR)
+sum(is.na(CR))
+colSums(is.na(CR))
+```
+#imputation
+#Replace it with mean/median/mode
+
+```{r}
+acc<-function(cf1){
+  Totp<-cf1[2,1]+cf1[2,2]
+  TP<-cf1[2,2]
+  c<-TP/Totp
+  c
+}
+
+mode <- function(y){
+  uniq<- unique(y)
+  uniq[which.max(tabulate(match(y,uniq)))]
+}
+
+CR$Gender[is.na(CR$Gender)]<- mode(CR$Gender)
+CR$Married[is.na(CR$Married)]<-mode( CR$Married)
+CR$Dependents[is.na(CR$Dependents)]<- mode(CR$Dependents)
+CR$Self_Employed[is.na(CR$Self_Employed)]<- mode(CR$Self_Employed)
+CR$LoanAmount[is.na(CR$LoanAmount)]<- median(CR$LoanAmount,na.rm = T)
+CR$Loan_Amount_Term[is.na(CR$Loan_Amount_Term)]<- median(CR$Loan_Amount_Term,na.rm = T)
+CR$Credit_History[is.na(CR$Credit_History)]<- mode(CR$Credit_History)
+
+#covert CR$Credit_History to factor
+CR$Credit_History<-as.factor(CR$Credit_History)
+class(CR$Credit_History)
+
+```
+#Classification using decision tree
+```{r message=TRUE}
+
+library(rpart)
+model_CR_DL = rpart(Loan_Status~.,data=CR) # classification
+
+```
+#classification using Logistic Regression
+```{r}
+model_CR_LR<- glm(Loan_Status~Married+Credit_History+Property_Area,family = binomial(link = 'logit'),data=CR)
+summary(model_CR_LR)
+```
+#classification using SVM
+```{r warning=FALSE}
+library(e1071)
+model_CR_SVM<- svm(formula=Loan_Status~.,data=CR,type='C-classification',kernel='linear')
+summary(model_CR_SVM)
+```
+#CLASSIFICATION USING NAIVE BAYES
+```{r}
+#library(e1071)
+model_CR_NB<-naiveBayes(Loan_Status~.,data=CR)
+```
+
+#classification using random forest
+```{r}
+library(randomForest)
+model_CR_RF<-randomForest(x=CR[,-12],
+                      y=CR[,12],
+                      ntree = 500)
+```
+
+#VALIDATION DATASET ,reading imputing
+
+```{r}
+cr_v <- read.csv('D:/IMARTICUS/R/dataset/R_Module_Day_8.2_Credit_Risk_Validate_data.csv',na.strings = c(""," ","NA"))
+#check for data issues with testa nd clean it for the same
+colSums(is.na(cr_v))
+#cr_v$Loan_Status<-ifelse(cr_v$Loan_Status=="Y",1,0)
+cr_v$LoanAmount[is.na(cr_v$LoanAmount)] <- mean(cr_v$LoanAmount,na.rm=T)
+cr_v$Loan_Amount_Term[is.na(cr_v$Loan_Amount_Term)] <- mean(cr_v$Loan_Amount_Term,na.rm=T)
+cr_v$Credit_History[is.na(cr_v$Credit_History)]<-mode(cr_v$Credit_History)
+cr_v$Self_Employed[is.na(cr_v$Self_Employed)]<-mode(cr_v$Self_Employed)
+cr_v$Dependents[is.na(cr_v$Dependents)]<-mode(cr_v$Dependents)
+cr_v$Gender[is.na(cr_v$Gender)]<-mode(cr_v$Gender)
+cr_v$Married[is.na(cr_v$Married)]<-mode( cr_v$Married)
+
+cr_v$Loan_ID=NULL
+cr_v$Credit_History<-as.factor(cr_v$Credit_History)
+```
+#CLAssification & validation using KNN
+```{r}
+library(class)
+#cr_v$Loan_Status<- ifelse(cr_v$Loan_Status=="Y",1,0)
+#CR$Loan_Status<- ifelse(CR$Loan_Status=="Y",1,0)
+CR$Loan_Status<- as.factor(CR$Loan_Status)
+cr_v$Loan_Status<-as.factor(cr_v$Loan_Status)
+
+#CR1<- CR[,-c(1,2,3,4,5,11,10)]
+#CR2<- cr_v[,-c(1,2,3,4,5,11,10)]
+CR_K<-CR
+cr_v_k<-cr_v
+
+levels(CR_K$Gender)<-1:2
+levels(CR_K$Married)<-1:2
+levels(CR_K$Dependents)<-1:4
+levels(CR_K$Education)<-1:2
+levels(CR_K$Self_Employed)<-1:2
+levels(CR_K$Property_Area)<-1:3
+
+CR_K$Gender<-as.numeric(CR_K$Gender)
+CR_K$Married<-as.numeric(CR_K$Married)
+CR_K$Dependents<-as.numeric(CR_K$Dependents)
+CR_K$Education<-as.numeric(CR_K$Education)
+CR_K$Self_Employed<-as.numeric(CR_K$Self_Employed)
+CR_K$Property_Area<-as.numeric(CR_K$Property_Area)
+CR_K$Credit_History<-as.numeric(CR_K$Credit_History)
+
+levels(cr_v_k$Gender)<-1:2
+levels(cr_v_k$Married)<-1:2
+levels(cr_v_k$Dependents)<-1:4
+levels(cr_v_k$Education)<-1:2
+levels(cr_v_k$Self_Employed)<-1:2
+levels(cr_v_k$Property_Area)<-1:3
+
+cr_v_k$Gender<-as.numeric(cr_v_k$Gender)
+cr_v_k$Married<-as.numeric(cr_v_k$Married)
+cr_v_k$Dependents<-as.numeric(cr_v_k$Dependents)
+cr_v_k$Education<-as.numeric(cr_v_k$Education)
+cr_v_k$Self_Employed<-as.numeric(cr_v_k$Self_Employed)
+cr_v_k$Property_Area<-as.numeric(cr_v_k$Property_Area)
+cr_v_k$Credit_History<-as.numeric(cr_v_k$Credit_History)
+
+
+
+model_CR_KNN=knn(train =CR_K[,-12] ,
+              test = cr_v_k[,-12],
+              cl=CR_K[,12],
+              k=20,prob = TRUE)
+model_CR_KNN<-as.numeric(model_CR_KNN)
+
+#model_CR_KNN<-ifelse(model_CR_KNN>0.5,1,0)
+#View(CR2)
+CF_CR_KNN<- table(model_CR_KNN,cr_v_k$Loan_Status)
+CF_CR_KNN
+
+acc<-function(cf1){
+  Totp<-cf1[2,1]+cf1[2,2]
+  TP<-cf1[2,2]
+  c<-TP/Totp
+  c
+}
+acc(CF_CR_KNN)
+library(ROCR)
+
+pr_CR_KNN<- prediction(model_CR_KNN,cr_v_k$Loan_Status)
+#length(cr_v$Loan_Status)
+prf_CR_KNN<- performance(pr_CR_KNN,measure = "tpr",x.measure = "fpr")
+plot(prf_CR_KNN)
+
+#obtaining area under ROC curve
+auc_CR_KNN<-performance(pr_CR_KNN,measure = "auc")
+auc_CR_KNN<- auc_CR_KNN@y.values[[1]]
+auc_CR_KNN
+```
+#validating using decision tree
+```{r}
+validate_CR_DL <- predict(model_CR_DL,newdata=cr_v,type='class')
+validate_CR_DL <- ifelse(validate_CR_DL =="Y",1,0)
+
+
+#Confusion matrix
+cf_CR_DL<-table(validate_CR_DL,cr_v$Loan_Status)
+cf_CR_DL
+#function for accuracy
+acc<-function(cf1){
+  Totp<-cf1[2,1]+cf1[2,2]
+  TP<-cf1[2,2]
+  c<-TP/Totp
+  c
+}
+acc(cf_CR_DL)
+
+library(ROCR)
+
+
+pr_CR_DL<- prediction(validate_CR_DL,cr_v$Loan_Status)
+#length(cr_v$Loan_Status)
+prf_CR_DL<- performance(pr_CR_DL,measure = "tpr",x.measure = "fpr")
+plot(prf_CR_DL)
+
+#obtaining area under ROC curve
+auc_CR_DL<-performance(pr_CR_DL,measure = "auc")
+auc_CR_DL<- auc_CR_DL@y.values[[1]]
+auc_CR_DL
+
+#prediction for the prediction set
+plot(model_CR_DL,uniform=TRUE,cex=0.8)
+text(model_CR_DL, use.n=TRUE, all=TRUE)
+
+```
+
+
+
+
+
+#validating using logistic regression
+```{r}
+#validation of our model using validation set
+validate_CR_LR <- predict(model_CR_LR,newdata=cr_v,type='response')
+validate_CR_LR <- ifelse(validate_CR_LR >=0.5,1,0)
+
+#Confusion matrix
+cf_CR_LR<-table(validate_CR_LR,cr_v$Loan_Status)
+cf_CR_LR
+#function for accuracy
+acc<-function(cf1){
+  Totp<-cf1[2,1]+cf1[2,2]
+  TP<-cf1[2,2]
+  c<-TP/Totp
+  c
+}
+acc(cf_CR_LR)
+
+library(ROCR)
+
+pr_CR_LR<- prediction(validate_CR_LR,cr_v$Loan_Status)
+#length(cr_v$Loan_Status)
+prf_CR_LR<- performance(pr_CR_LR,measure = "tpr",x.measure = "fpr")
+plot(prf_CR_LR)
+
+#obtaining area under ROC curve
+auc_CR_LR<-performance(pr_CR_LR,measure = "auc")
+auc_CR_LR<- auc_CR_LR@y.values[[1]]
+auc_CR_LR
+#help(ROCR)
+```
+#validating using SVM
+```{r}
+#predicting 
+validate_CR_SVM<-predict(model_CR_SVM,cr_v)
+validate_CR_SVM<-ifelse(validate_CR_SVM=="Y",1,0)
+#confusion matrix
+cf_CR_SVM<-table(validate_CR_SVM,cr_v$Loan_Status)
+cf_CR_SVM
+
+#function for accuracy
+acc<-function(cfSVM){
+  Totp<-cfSVM[2,1]+cfSVM[2,2]
+  TP<-cfSVM[2,2]
+  c<-TP/Totp
+  c
+}
+acc(cf_CR_SVM)
+
+library(ROCR)
+pr_CR_SVM<- prediction(validate_CR_SVM,cr_v$Loan_Status)
+#length(cr_v$Loan_Status)
+prf_CR_SVM<- performance(pr_CR_SVM,measure = "tpr",x.measure = "fpr")
+plot(prf_CR_SVM)
+
+#obtaining area under ROC curve
+auc_CR_SVM<-performance(pr_CR_SVM,measure = "auc")
+auc_CR_SVM<- auc_CR_SVM@y.values[[1]]
+auc_CR_SVM
+#help(ROCR)
+
+```
+#VALIDATING USING NAIVE BAYES
+```{r}
+#predicting 
+validate_CR_NB<-predict(model_CR_NB,cr_v)
+validate_CR_NB<-ifelse(validate_CR_NB=="Y",1,0)
+#confusion matrix
+cf_CR_NB<-table(validate_CR_NB,cr_v$Loan_Status)
+cf_CR_NB
+
+#function for accuracy
+acc<-function(cfSVM){
+  Totp<-cfSVM[2,1]+cfSVM[2,2]
+  TP<-cfSVM[2,2]
+  c<-TP/Totp
+  c
+}
+acc(cf_CR_NB)
+
+library(ROCR)
+pr_CR_NB<- prediction(validate_CR_NB,cr_v$Loan_Status)
+#length(cr_v$Loan_Status)
+prf_CR_NB<- performance(pr_CR_NB,measure = "tpr",x.measure = "fpr")
+plot(prf_CR_NB)
+
+#obtaining area under ROC curve
+auc_CR_NB<-performance(pr_CR_NB,measure = "auc")
+auc_CR_NB<- auc_CR_NB@y.values[[1]]
+auc_CR_NB
+```
+#VALIDATING USING RANDOM FOREST
+```{r}
+validate_CR_RF<- predict(model_CR_RF,newdata =cr_v)
+validate_CR_RF<-as.numeric(validate_CR_RF)
+CF_RF<-table(validate_CR_RF,cr_v$Loan_Status)
+CF_RF
+acc<-function(cf1){
+  Totp<-cf1[2,1]+cf1[2,2]
+  TP<-cf1[2,2]
+  c<-TP/Totp
+  c
+}
+acc(CF_RF)
+
+library(ROCR)
+
+pr_CR_RF<- prediction(validate_CR_RF,cr_v$Loan_Status)
+#length(cr_v$Loan_Status)
+prf_CR_RF<- performance(pr_CR_RF,measure = "tpr",x.measure = "fpr")
+plot(prf_CR_RF)
+
+#obtaining area under ROC curve
+auc_CR_RF<-performance(pr_CR_RF,measure = "auc")
+auc_CR_RF<- auc_CR_RF@y.values[[1]]
+auc_CR_RF
+```
+#TESTING
+```{r}
+#cr_test1 <- read.csv('D:/IMARTICUS/R/dataset/R_Module_Day_8.1_Credit_Risk_Test_data.csv',na.strings = c(""," ","NA"))
+
+#cr_test1$Credit_History<-as.factor(cr_test1$Credit_History)
+
+#fr_p1<- predict(classifier,newdata = cr_test1,type ='class')
+#fr_p <- ifelse(fitted.results1 >=0.5,1,0)
+
+
+#cr_test1<-data.frame(cr_test1,fr_p1)
+
+#View(cr_test1)
+
+```
