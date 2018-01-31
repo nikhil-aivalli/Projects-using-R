@@ -1,0 +1,104 @@
+---
+title: "EDA Assignment-2"
+author: "NIKHIL AIVALLI"
+date: "10 September 2017"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+1)	Load the dataset early_senate_polls.csv file.
+```{r}
+#we load a data set into R using read.csv command
+ds=read.csv("D:/EDA/assignment 2/early-senate-polls.csv")
+```
+
+2)	Find the number of rows and columns in the dataset
+```{r}
+#nrow provides the number of rows and ncol gives the number of columns
+rows=nrow(ds)
+cols=ncol(ds)
+cat("Number of rows=",rows,"\n")
+cat("number of columns=",cols,"\n")
+```
+
+3)	Check the class type of each column
+```{r}
+#str function provides the type of each column with respective values.
+str(ds)
+```
+
+4)	Use the dplyr package
+```{r}
+#require command check if the required package is installed,if not, then it will install and load it.
+require(dplyr)
+```
+
+5)	For each year, calculate the average of presidential_approval
+```{r}
+# for this we intially do groupby year and get the mean for the respective years using summarise function.
+
+ds %>% group_by(year) %>% summarise(avg_presidential_approval=mean(presidential_approval,na.rm=TRUE))
+```
+
+6)	Show only the rows where the average presidential_approval obtained in the above step is greater than 100.
+```{r}
+#here the required condition is obtained using filter command by using the new variable created in summarise function.
+
+ds %>% group_by(year) %>% summarise(avg_presidential_approval=mean(presidential_approval,na.rm=TRUE)) %>%  filter(avg_presidential_approval>100)
+```
+
+7)	Use the dplyr package to select the 
+    a.	columns year and poll_average
+    b.	For each year, find the maximum value of poll_average
+
+```{r}
+#a.columns year and poll_average
+ds%>%select(year,poll_average)
+
+#b.For each year, find the maximum value of poll_average
+
+#to find the maximum value for each year,we first use groupby function and find maximum using summarise function
+
+ds %>%  group_by(year) %>% summarise(max_poll_average=max(poll_average,na.rm=TRUE))
+```
+
+8)	select year and election_result and arrange the results in order(ascending) of election_result 
+
+```{r}
+#to get the result in ascending order we use arrange function.for descending order we use desc(election_result).
+
+ds %>% select(year,election_result) %>% arrange(election_result)
+```
+
+9)	Use the dplyr package to select
+   a.	Year and poll_average for each year
+   b.	Retrieve the maximum value of poll_average and store it in a new variable max_poll_aver.
+
+```{r}
+#a.select Year and poll_average for each year
+
+ds %>% select(year,poll_average) %>% group_by(year)
+
+#For each year, calculate the average of poll_average
+
+ds %>% group_by(year) %>% summarise(avg_poll_average=mean(poll_average,na.rm=TRUE))
+
+
+#b.Retrieve the maximum value of poll_average and store it in a new variable max_poll_aver.
+
+#we use the summarise function
+
+max_poll_aver= ds %>% summarise(max(poll_average))
+max_poll_aver
+```
+
+
+ 
+
+
